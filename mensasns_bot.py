@@ -1,5 +1,5 @@
-from seleniumrequests import Firefox
-from selenium.webdriver.firefox.options import Options
+from seleniumrequests import Chrome
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -18,7 +18,7 @@ urllib3.disable_warnings()
 
 import getpass
 
-class MyDriver(Firefox):
+class MyDriver(Chrome):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.base_url = 'https://spazi.sns.it'
@@ -153,9 +153,9 @@ class MyBot:
                     symbol = '🟢'
                 if end_t > datetime.datetime.now():
                     url = self.driver.get_reserve_url(which, l, begin_t, end_t)
-                    s = f'*[{format_time(begin_t)}\\-{format_time(end_t)}]({url})*'
+                    s = f'*[`{format_time(begin_t)}\\-{format_time(end_t)}`]({url})*'
                 else:
-                    s = f'*{format_time(begin_t)}\\-{format_time(end_t)}*'
+                    s = f'*`{format_time(begin_t)}\\-{format_time(end_t)}`*'
                     symbol = '➖'
                 s += f' `{get_progress_bar(n / self.SLOTS[l])}{symbol}` `{n:2}/{self.SLOTS[l]}`'
                 slot_strings.append(s)
