@@ -64,6 +64,9 @@ def get_progress_bar(perc):
         bar = blocks[1] + bar[1 :]
     return bar
 
+def make_monospace_digits(s):
+    return ''.join(chr(ord('𝟶') + int(c)) if c.isdigit() else c for c in s)
+
 class MyBot:
     def __init__(self, token, channel, email, password):
         self.updater = telegram.ext.Updater(token, use_context = True)
@@ -151,11 +154,12 @@ class MyBot:
                     symbol = '⚠️'
                 else:
                     symbol = '🟢'
+                time_str = make_monospace_digits(f'{format_time(begin_t)}\\-{format_time(end_t)}')
                 if end_t > datetime.datetime.now():
                     url = self.driver.get_reserve_url(which, l, begin_t, end_t)
-                    s = f'*[{format_time(begin_t)}\\-{format_time(end_t)}]({url})*'
+                    s = f'*[{time_str}]({url})*'
                 else:
-                    s = f'*{format_time(begin_t)}\\-{format_time(end_t)}*'
+                    s = f'*{time_str}*'
                     symbol = '➖'
                 s += f' `{get_progress_bar(n / self.SLOTS[l])}{symbol}` `{n:2}/{self.SLOTS[l]}`'
                 slot_strings.append(s)
