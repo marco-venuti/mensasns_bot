@@ -154,7 +154,7 @@ class MyBot:
                     symbol = '⚠️'
                 else:
                     symbol = '🟢'
-                time_str = make_monospace_digits(f'{format_time(begin_t)}\\-{format_time(end_t)}')
+                time_str = f'{format_time(begin_t)}\\-{format_time(end_t)}'
                 if end_t > datetime.datetime.now():
                     url = self.driver.get_reserve_url(which, l, begin_t, end_t)
                     s = f'*[{time_str}]({url})*'
