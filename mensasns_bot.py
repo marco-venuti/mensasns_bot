@@ -145,17 +145,18 @@ class MyBot:
             for t, n in slots.items():
                 begin_t = datetime.datetime.combine(date, t)
                 end_t = begin_t + self.TURN
-                if end_t > datetime.datetime.now():
-                    url = self.driver.get_reserve_url(which, l, begin_t, end_t)
-                    s = f'*[{format_time(begin_t)}\\-{format_time(end_t)}]({url})*'
-                else:
-                    s = f'*{format_time(begin_t)}\\-{format_time(end_t)}*'
                 if n == self.SLOTS[l]:
                     symbol = '⛔️'
                 elif n >= self.SLOTS[l] - 5:
                     symbol = '⚠️'
                 else:
                     symbol = '🟢'
+                if end_t > datetime.datetime.now():
+                    url = self.driver.get_reserve_url(which, l, begin_t, end_t)
+                    s = f'*[{format_time(begin_t)}\\-{format_time(end_t)}]({url})*'
+                else:
+                    s = f'*{format_time(begin_t)}\\-{format_time(end_t)}*'
+                    symbol = '➖'
                 s += f' `{get_progress_bar(n / self.SLOTS[l])}{symbol}` `{n:2}/{self.SLOTS[l]}`'
                 slot_strings.append(s)
             res.append('\n'.join([header] + slot_strings))
@@ -169,6 +170,5 @@ token = open('token.txt', 'r').read().strip()
 bot = MyBot(token, channel, email, password)
 try:
     bot.run()
-except Exception as e:
+finally:
     del bot
-    raise e
