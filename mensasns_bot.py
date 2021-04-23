@@ -92,7 +92,7 @@ class MyBot:
         self.updater.start_polling()
         self.updater.idle()
     def get_meal_time(self, which, date):
-        if date.weekday in [5, 6]:
+        if date.weekday() in [5, 6]:
             if which == 'lunch':
                 b, e = '12:30', '13:45'
             else:
@@ -126,7 +126,7 @@ class MyBot:
                 except telegram.error.BadRequest:
                     pass
             else:
-                self.active_messages[(d, w)] = self.bot.send_message(self.channel, text, parse_mode = 'MarkdownV2')
+                self.active_messages[(d, w)] = self.bot.send_message(self.channel, text, parse_mode = 'MarkdownV2', disable_notification = True)
     def get_message_text(self, date, which):
         self.driver.login(self.email, self.password)
         data = self.driver.get_schedule_data(which, date)
