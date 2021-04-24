@@ -28,6 +28,11 @@ class MyDriver(Chrome):
         self.get(self.base_url)
         data = {'email' : email, 'password' : password, 'login' : 'submit'}
         self.request('POST', f'{self.base_url}/index.php', data = data, verify = False)
+    def get_resource_url(self, which, date, line = None):
+        res = f'{self.base_url}/schedule.php?sid={self.SID[which]}&sd={date.isoformat()}'
+        if line is not None:
+            res += f'&rid={self.RID[which][line - 1]}'
+        return res
     def get_reserve_url(self, which, line, begin, end):
         format_time = lambda t: t.strftime('%Y-%m-%d %H:%M:%S')
         data = {
@@ -38,8 +43,8 @@ class MyDriver(Chrome):
             'ed' : format_time(end)
         }
         return 'https://spazi.sns.it/reservation.php?' + urllib.parse.urlencode(data)
-    def get_schedule_data(self, which, date = datetime.date.today()):
-        self.get(f'{self.base_url}/schedule.php?sid={self.SID[which]}&sd={date.isoformat()}')
+    def get_schedule_data(self, which, date):
+        self.get(self.get_resource_url(which, date))
         res = []
         for rid in self.RID[which]:
             WebDriverWait(self, 20).until(EC.visibility_of_element_located((By.CSS_SELECTOR, f'.reservations[data-resourceid="{rid}"]')))
@@ -133,7 +138,8 @@ class MyBot:
         res = []
         b, e = self.get_meal_time(which, date)
         for l, d in zip([1, 2], data):
-            header = f'*{date.strftime("%A %x")} \\- {self.MEALS[which]}, line {l}*'
+            url = self.driver.get_resource_url(which, date, l)
+            header = f'*[{date.strftime("%A %x")} \\- {self.MEALS[which]}, line {l}]({url})*'
             slots = OrderedDict()
             t = b
             while t < e:
