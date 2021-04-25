@@ -56,11 +56,11 @@ class MyDriver(Chrome):
         self.get(f'{self.base_url}/logout.php')
         self.delete_all_cookies()
         
-def get_progress_bar(perc):
+def get_progress_bar(perc, width):
     blocks = ['░', '▏', '▎', '▍', '▌', '▋', '▊', '▉', '█']
-    perc *= 8
+    perc *= width
     bar = ''
-    for i in range(8):
+    for i in range(width):
         j = round(max(0, min(1, perc)) * 8)
         bar += blocks[j]
         perc -= 1
@@ -73,14 +73,14 @@ def make_monospace_digits(s):
     return ''.join(chr(ord('𝟶') + int(c)) if c.isdigit() else c for c in s)
 
 class MyBot:
-    def __init__(self, token, channel, email, password):
+    def __init__(self, token, channels, email, password):
         self.updater = telegram.ext.Updater(token, use_context = True)
         self.bot = self.updater.bot
         self.bot.get_me()
-        self.channel = channel
+        self.channels = channels
         self.email = email
         self.password = password
-        self.active_messages = {}
+        self.active_messages = { c : {} for c in channels}
         driver_options = Options()
         driver_options.headless = True
         self.driver = MyDriver(options = driver_options)
@@ -88,8 +88,9 @@ class MyBot:
         self.SLOTS = {1 : 30, 2 : 25}
         self.TURN = datetime.timedelta(minutes = 15)
     def __del__(self):
-        for m in self.active_messages.values():
-            m.delete()
+        for d in self.active_messages.values():
+            for m in d.values():
+                m.delete()
         self.updater.stop()
         self.driver.quit()
     def run(self):
@@ -119,27 +120,32 @@ class MyBot:
                 if(e > now and b < now + datetime.timedelta(days = 1)):
                     relevant_meals.append((date, which))
         relevant_meals = relevant_meals[: 2]
-        for k in list(self.active_messages):
-            if k not in relevant_meals:
-                self.active_messages[k].delete()
-                del self.active_messages[k]
+        for d in self.active_messages.values():
+            for k in list(d):
+                if k not in relevant_meals:
+                    d[k].delete()
+                    del d[k]
         for d, w in relevant_meals:
             text = self.get_message_text(d, w)
-            if (d, w) in self.active_messages:
-                try:
-                    self.active_messages[(d, w)].edit_text(text, parse_mode = 'MarkdownV2')
-                except telegram.error.BadRequest:
-                    pass
-            else:
-                self.active_messages[(d, w)] = self.bot.send_message(self.channel, text, parse_mode = 'MarkdownV2', disable_notification = True)
+            for c in self.channels:
+                if (d, w) in self.active_messages[c]:
+                    try:
+                        self.active_messages[c][(d, w)].edit_text(text[c], parse_mode = 'MarkdownV2')
+                    except telegram.error.BadRequest:
+                        pass
+                else:
+                    self.active_messages[c][(d, w)] = self.bot.send_message(self.channels[c], text[c], parse_mode = 'MarkdownV2', disable_notification = True)
     def get_message_text(self, date, which):
         self.driver.login(self.email, self.password)
         data = self.driver.get_schedule_data(which, date)
-        res = []
+        res = { 'normal' : [], 'apple' : [], 'narrow' : [] }
         b, e = self.get_meal_time(which, date)
         for l, d in zip([1, 2], data):
             url = self.driver.get_resource_url(which, date, l)
-            header = f'*[{date.strftime("%A %x")} \\- {self.MEALS[which]}, line {l}]({url})*'
+            header = f'*[{date.strftime("%A %d/%m")} \\- {self.MEALS[which]}, line {l}]({url})*'
+            res['normal'].append(header)
+            res['apple'].append(header)
+            res['narrow'].append(header)
             slots = OrderedDict()
             t = b
             while t < e:
@@ -151,33 +157,41 @@ class MyBot:
                 slots[t] = n
             slot_strings = []
             format_time = lambda t: t.strftime('%H:%M')
-            for t, n in slots.items():
-                begin_t = datetime.datetime.combine(date, t)
-                end_t = begin_t + self.TURN
-                if n == self.SLOTS[l]:
-                    symbol = '⛔️'
-                elif n >= self.SLOTS[l] - 5:
-                    symbol = '⚠️'
-                else:
-                    symbol = '🟢'
-                time_str = f'{format_time(begin_t)}\\-{format_time(end_t)}'
-                if end_t > datetime.datetime.now():
-                    url = self.driver.get_reserve_url(which, l, begin_t, end_t)
-                    s = f'*[{time_str}]({url})*'
-                else:
-                    s = f'*{time_str}*'
-                    symbol = '➖'
-                s += f' `{get_progress_bar(n / self.SLOTS[l])}{symbol}` `{n:2}/{self.SLOTS[l]}`'
-                slot_strings.append(s)
-            res.append('\n'.join([header] + slot_strings))
-        return '\n\n'.join(res)
+            for c in res:
+                for t, n in slots.items():
+                    begin_t = datetime.datetime.combine(date, t)
+                    end_t = begin_t + self.TURN
+                    if n == self.SLOTS[l]:
+                        symbol = '⛔️'
+                    elif n >= self.SLOTS[l] - 5:
+                        symbol = '⚠️'
+                    else:
+                        symbol = '🟢'
+                    time_str = f'{format_time(begin_t)}\\-{format_time(end_t)}'
+                    perc_str = f'{n:2}/{self.SLOTS[l]}'
+                    if c in ['apple', 'narrow']:
+                        time_str = make_monospace_digits(time_str)
+                        perc_str = make_monospace_digits(perc_str)
+                    if end_t > datetime.datetime.now():
+                        url = self.driver.get_reserve_url(which, l, begin_t, end_t)
+                        s = f'*[{time_str}]({url})*'
+                    else:
+                        s = f'*{time_str}*'
+                        symbol = '➖'
+                    if c in ['normal', 'apple']:
+                        width = 8
+                    elif c == 'narrow':
+                        width = 5
+                    res[c].append(f'{s} `{get_progress_bar(n / self.SLOTS[l], width)}{symbol}` `{perc_str}`')
+                res[c].append('')
+        return { c : '\n'.join(s) for c, s in res.items() }
 
 email = input('SNS email: ')
 password = getpass.getpass()
-channel = '@mensasnsupdates'
+channels = { 'normal' : '@mensasnsupdates', 'apple' : '@mensasnsupdatesapple', 'narrow' : '@mensasnsupdatesnarrow' }
 token = open('token.txt', 'r').read().strip()
 
-bot = MyBot(token, channel, email, password)
+bot = MyBot(token, channels, email, password)
 try:
     bot.run()
 finally:
