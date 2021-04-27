@@ -85,7 +85,7 @@ class MyBot:
         driver_options.headless = True
         self.driver = MyDriver(options = driver_options)
         self.MEALS = {'lunch' : 'Lunch', 'dinner' : 'Dinner'}
-        self.SLOTS = {1 : 30, 2 : 25}
+        self.SLOTS = {1 : 40, 2 : 30}
         self.TURN = datetime.timedelta(minutes = 15)
     def __del__(self):
         for d in self.active_messages.values():
@@ -161,7 +161,7 @@ class MyBot:
                 for t, n in slots.items():
                     begin_t = datetime.datetime.combine(date, t)
                     end_t = begin_t + self.TURN
-                    if n == self.SLOTS[l]:
+                    if n >= self.SLOTS[l]:
                         symbol = '⛔️'
                     elif n >= self.SLOTS[l] - 5:
                         symbol = '⚠️'
