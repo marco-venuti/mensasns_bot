@@ -85,7 +85,7 @@ class MyBot:
         driver_options.headless = True
         self.driver = MyDriver(options = driver_options)
         self.MEALS = {'lunch' : 'Lunch', 'dinner' : 'Dinner'}
-        self.SLOTS = {1 : 40, 2 : 30}
+        self.SLOTS = {('lunch', 1) : 40, ('lunch', 2) : 30, ('dinner', 1) : 30, ('dinner', 2) : 25}
         self.TURN = datetime.timedelta(minutes = 15)
     def __del__(self):
         for d in self.active_messages.values():
@@ -161,14 +161,14 @@ class MyBot:
                 for t, n in slots.items():
                     begin_t = datetime.datetime.combine(date, t)
                     end_t = begin_t + self.TURN
-                    if n >= self.SLOTS[l]:
+                    if n >= self.SLOTS[(which, l)]:
                         symbol = '⛔️'
-                    elif n >= self.SLOTS[l] - 5:
+                    elif n >= self.SLOTS[(which, l)] - 5:
                         symbol = '⚠️'
                     else:
                         symbol = '🟢'
                     time_str = f'{format_time(begin_t)}\\-{format_time(end_t)}'
-                    perc_str = f'{n:2}/{self.SLOTS[l]}'
+                    perc_str = f'{n:2}/{self.SLOTS[(which, l)]}'
                     if c in ['apple', 'narrow']:
                         time_str = make_monospace_digits(time_str)
                         perc_str = make_monospace_digits(perc_str)
@@ -182,7 +182,7 @@ class MyBot:
                         width = 8
                     elif c == 'narrow':
                         width = 5
-                    res[c].append(f'{s} `{get_progress_bar(n / self.SLOTS[l], width)}{symbol}` `{perc_str}`')
+                    res[c].append(f'{s} `{get_progress_bar(n / self.SLOTS[(which, l)], width)}{symbol}` `{perc_str}`')
                 res[c].append('')
         return { c : '\n'.join(s) for c, s in res.items() }
 
