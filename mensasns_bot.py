@@ -21,13 +21,14 @@ import getpass
 class MyDriver(Chrome):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.set_page_load_timeout(10)
         self.base_url = 'https://spazi.sns.it'
         self.SID = {'lunch' : '31', 'dinner' : '32'}
         self.RID = {'lunch' : ['1278', '1279'], 'dinner' : ['1281', '1280']}
     def login(self, email, password):
         self.get(self.base_url)
         data = {'email' : email, 'password' : password, 'login' : 'submit'}
-        self.request('POST', f'{self.base_url}/index.php', data = data, verify = False)
+        self.request('POST', f'{self.base_url}/index.php', data = data, verify = False, timeout = 10)
     def get_resource_url(self, which, date, line = None):
         res = f'{self.base_url}/schedule.php?sid={self.SID[which]}&sd={date.isoformat()}'
         if line is not None:
