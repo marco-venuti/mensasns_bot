@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from seleniumrequests import Chrome
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
@@ -24,26 +26,30 @@ class MyDriver(Chrome):
         self.set_page_load_timeout(10)
         self.base_url = 'https://spazi.sns.it'
         self.SID = {'lunch' : '31', 'dinner' : '32'}
-        self.RID = {'lunch' : ['1278', '1279'], 'dinner' : ['1281', '1280']}
+        self.RID = {'lunch' : ['1279'], 'dinner' : ['1280']}
+
     def login(self, email, password):
         self.get(self.base_url)
         data = {'email' : email, 'password' : password, 'login' : 'submit'}
         self.request('POST', f'{self.base_url}/index.php', data = data, verify = False, timeout = 10)
+
     def get_resource_url(self, which, date, line = None):
         res = f'{self.base_url}/schedule.php?sid={self.SID[which]}&sd={date.isoformat()}'
         if line is not None:
-            res += f'&rid={self.RID[which][line - 1]}'
+            res += f'&rid={self.RID[which][line-2]}'
         return res
+
     def get_reserve_url(self, which, line, begin, end):
         format_time = lambda t: t.strftime('%Y-%m-%d %H:%M:%S')
         data = {
             'sid' : self.SID[which],
-            'rid' : self.RID[which][line - 1],
+            'rid' : self.RID[which][line-2],
             'rd' : begin.date().isoformat(),
             'sd' : format_time(begin),
             'ed' : format_time(end)
         }
         return 'https://spazi.sns.it/reservation.php?' + urllib.parse.urlencode(data)
+
     def get_schedule_data(self, which, date):
         self.get(self.get_resource_url(which, date))
         res = []
@@ -53,10 +59,11 @@ class MyDriver(Chrome):
             spans = self.find_elements_by_css_selector(selector)
             res.append(list(Counter(s.text for s in spans).items()))
         return res
+
     def logout(self):
         self.get(f'{self.base_url}/logout.php')
         self.delete_all_cookies()
-        
+
 def get_progress_bar(perc, width):
     blocks = ['░', '▏', '▎', '▍', '▌', '▋', '▊', '▉', '█']
     perc *= width
@@ -84,20 +91,23 @@ class MyBot:
         self.active_messages = { c : {} for c in channels}
         driver_options = Options()
         driver_options.headless = True
-        self.driver = MyDriver(options = driver_options)
+        self.driver = MyDriver(executable_path='./chromedriver', options = driver_options)
         self.MEALS = {'lunch' : 'Lunch', 'dinner' : 'Dinner'}
         self.SLOTS = {('lunch', 1) : 40, ('lunch', 2) : 30, ('dinner', 1) : 40, ('dinner', 2) : 30}
         self.TURN = datetime.timedelta(minutes = 15)
+
     def __del__(self):
         for d in self.active_messages.values():
             for m in d.values():
                 m.delete()
         self.updater.stop()
         self.driver.quit()
+
     def run(self):
         self.updater.job_queue.run_repeating(lambda c: self.send_updates(), 60, first = 1)
         self.updater.start_polling()
         self.updater.idle()
+
     def get_meal_time(self, which, date):
         if date.weekday() in [5, 6]:
             if which == 'lunch':
@@ -136,12 +146,13 @@ class MyBot:
                         pass
                 else:
                     self.active_messages[c][(d, w)] = self.bot.send_message(self.channels[c], text[c], parse_mode = 'MarkdownV2', disable_notification = True)
+
     def get_message_text(self, date, which):
         self.driver.login(self.email, self.password)
         data = self.driver.get_schedule_data(which, date)
         res = { 'normal' : [], 'apple' : [], 'narrow' : [] }
         b, e = self.get_meal_time(which, date)
-        for l, d in zip([1, 2], data):
+        for l, d in zip([2], data):
             url = self.driver.get_resource_url(which, date, l)
             header = f'*[{date.strftime("%A %d/%m")} \\- {self.MEALS[which]}, line {l}]({url})*'
             res['normal'].append(header)
