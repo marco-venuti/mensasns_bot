@@ -121,21 +121,23 @@ class MyBot:
                 b, e = '19:30', '20:45'
         f = lambda t: datetime.datetime.combine(date, datetime.time.fromisoformat(t))
         return f(b), f(e)
+
     def send_updates(self):
         relevant_meals = []
         now = datetime.datetime.now()
-        for day_offset in [0, 1]:
-            date = datetime.date.today() + datetime.timedelta(days = day_offset)
-            for which in ['lunch', 'dinner']:
-                b, e = self.get_meal_time(which, date)
-                if(e > now and b < now + datetime.timedelta(days = 1)):
-                    relevant_meals.append((date, which))
-        relevant_meals = relevant_meals[: 2]
+        date = datetime.date.today()
+
+        for which in ['lunch', 'dinner']:
+            b, e = self.get_meal_time(which, date)
+            if(e > now and b < now + datetime.timedelta(hours = 4)):
+                relevant_meals.append((date, which))
+
         for d in self.active_messages.values():
             for k in list(d):
                 if k not in relevant_meals:
                     d[k].delete()
                     del d[k]
+
         for d, w in relevant_meals:
             text = self.get_message_text(d, w)
             for c in self.channels:
@@ -200,7 +202,7 @@ class MyBot:
 
 email = input('SNS email: ')
 password = getpass.getpass()
-channels = { 'normal' : '@mensasnsupdates', 'apple' : '@mensasnsupdatesapple', 'narrow' : '@mensasnsupdatesnarrow' }
+channels = { 'normal' : '@starfleet_mensa' }
 token = open('token.txt', 'r').read().strip()
 
 bot = MyBot(token, channels, email, password)
